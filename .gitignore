@@ -1,0 +1,4 @@
+node_modules/
+.env
+pawfeed.json
+npm-debug.log*

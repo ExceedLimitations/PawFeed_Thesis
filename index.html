@@ -1,0 +1,467 @@
+<!doctype html>
+<html lang="en" data-theme="light">
+  <head>
+    <meta charset="UTF-8" />
+    <title>PawFeed — Smart Pet Feeder</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap"
+      rel="stylesheet"
+    />
+    <script src="/socket.io/socket.io.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <link rel="stylesheet" href="style.css" />
+  </head>
+
+  <body>
+    <!-- ── Navbar ──────────────────────────────────────────────── -->
+    <nav class="navbar">
+      <a class="nav-brand" href="#">🐾 <span>PawFeed</span></a>
+      <div class="nav-right">
+        <span class="pill pill-online">
+          <span class="pill-dot"></span> Online
+        </span>
+        <button
+          class="notif-btn"
+          title="Notifications"
+          onclick="toggleNotif(this)"
+        >
+          🔔 <span class="notif-badge" id="notif-badge"></span>
+        </button>
+        <button
+          class="theme-toggle"
+          onclick="toggleTheme()"
+          title="Toggle theme"
+          id="theme-btn"
+        >
+          🌙
+        </button>
+      </div>
+    </nav>
+
+    <!-- ── Hero ────────────────────────────────────────────────── -->
+    <div class="hero">
+      <h1>🐾 PawFeed Smart Dashboard</h1>
+      <p>Real-time monitoring & automated feeding for your beloved pet</p>
+      <div class="hero-meta">
+        <div class="hero-stat">
+          <div class="val" id="hero-feedings">0</div>
+          <div class="lbl">Feedings Today</div>
+        </div>
+        <div class="hero-stat">
+          <div class="val" id="hero-level">—%</div>
+          <div class="lbl">Food Level</div>
+        </div>
+        <div class="hero-stat">
+          <div class="val" id="hero-uptime">12h</div>
+          <div class="lbl">Uptime</div>
+        </div>
+        <div class="hero-stat">
+          <div class="val" id="hero-temp">22°</div>
+          <div class="lbl">Room Temp</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── Main ────────────────────────────────────────────────── -->
+    <main class="main">
+      <!-- STAT STRIP -->
+      <p class="section-title">Overview</p>
+      <div class="grid-4">
+        <div class="stat-card" style="animation-delay: 0.05s">
+          <div class="sc-label">Feedings Today</div>
+          <div class="sc-value sc-purple" id="stat-today">3</div>
+          <div class="sc-sub">
+            <span class="sc-trend trend-up">▲ +1</span> vs yesterday
+          </div>
+        </div>
+        <div class="stat-card" style="animation-delay: 0.1s">
+          <div class="sc-label">Weekly Total</div>
+          <div class="sc-value sc-green" id="stat-week">21</div>
+          <div class="sc-sub">
+            <span class="sc-trend trend-up">▲ on track</span>
+          </div>
+        </div>
+        <div class="stat-card" style="animation-delay: 0.15s">
+          <div class="sc-label">Avg Food Level</div>
+          <div class="sc-value sc-amber" id="stat-avg">72%</div>
+          <div class="sc-sub">
+            <span class="sc-trend trend-down">▼ needs refill soon</span>
+          </div>
+        </div>
+        <div class="stat-card" style="animation-delay: 0.2s">
+          <div class="sc-label">Last Fed</div>
+          <div class="sc-value stat-last-val" id="stat-last">12:30 PM</div>
+          <div class="sc-sub">Automated schedule</div>
+        </div>
+      </div>
+
+      <!-- PET PROFILE + ALERT -->
+      <p class="section-title">Pet & Status</p>
+      <div class="grid-2">
+        <div class="card">
+          <div class="card-header">
+            <div class="card-title">
+              <div class="icon icon-pink">🐶</div>
+              Pet Profile
+            </div>
+            <button class="btn btn-ghost btn-sm">Edit</button>
+          </div>
+          <div class="pet-profile">
+            <div class="pet-avatar">🐕</div>
+            <div class="pet-info">
+              <div class="pet-name">Buddy</div>
+              <div class="pet-meta">Golden Retriever • 3 yrs • 28 kg</div>
+              <div class="pet-tags">
+                <span class="pet-tag tag-purple">Daily: 3× meals</span>
+                <span class="pet-tag tag-green">Healthy Weight</span>
+                <span class="pet-tag tag-amber">Medium Kibble</span>
+              </div>
+            </div>
+          </div>
+          <div class="divider"></div>
+          <div class="serving-boxes">
+            <div class="serving-box">
+              <div class="serving-val-accent">80g</div>
+              <div class="serving-label">Per Serving</div>
+            </div>
+            <div class="serving-box">
+              <div class="serving-val-green">240g</div>
+              <div class="serving-label">Daily Total</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-header">
+            <div class="card-title">
+              <div class="icon icon-red">🚨</div>
+              System Alerts
+            </div>
+            <span id="alert-count-badge" class="pill alert-badge alert-badge-ok"
+              >All Clear</span
+            >
+          </div>
+          <div id="jam-alert-box" class="alert-box alert-ok">
+            <span class="alert-icon">✅</span>
+            <span id="jam-alert"
+              >System operating normally — no issues detected.</span
+            >
+          </div>
+          <div class="divider"></div>
+          <div class="sys-alerts">
+            <div class="alert-box sys-alert-wifi">
+              <span class="alert-icon">🌐</span> Wi-Fi connected — Signal:
+              <strong>Strong</strong>
+            </div>
+            <div class="alert-box sys-alert-power">
+              <span class="alert-icon">🔋</span> Power:
+              <strong>Mains — Battery backup ready</strong>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- FOOD LEVEL + WATER -->
+      <p class="section-title">Resources</p>
+      <div class="grid-2">
+        <div class="card">
+          <div class="card-header">
+            <div class="card-title">
+              <div class="icon icon-amber">🥣</div>
+              Food Storage
+            </div>
+            <button class="btn btn-ghost btn-sm" onclick="simulateRefill()">
+              + Refill
+            </button>
+          </div>
+          <div class="gauge-wrap">
+            <svg class="gauge-svg" viewBox="0 0 180 180">
+              <circle class="gauge-track" cx="90" cy="90" r="80" />
+              <circle
+                class="gauge-fill"
+                id="gauge-circle"
+                cx="90"
+                cy="90"
+                r="80"
+                stroke="#6c63ff"
+              />
+              <text
+                class="gauge-label"
+                id="gauge-text"
+                x="90"
+                y="85"
+                fill="var(--text)"
+              >
+                72%
+              </text>
+              <text
+                class="gauge-sublabel"
+                x="90"
+                y="108"
+                fill="var(--text-muted)"
+              >
+                Food Level
+              </text>
+            </svg>
+            <span class="gauge-status alert-badge-ok" id="gauge-status-badge"
+              >✅ Good</span
+            >
+          </div>
+          <div class="prog-bar-outer" style="margin-top: 8px">
+            <div class="prog-bar-inner" id="food-prog"></div>
+          </div>
+          <div class="prog-bar-labels">
+            <span>0%</span><span id="food-level" class="prog-bar-val">72%</span
+            ><span>100%</span>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-header">
+            <div class="card-title">
+              <div class="icon" style="background: rgba(59, 130, 246, 0.12)">
+                💧
+              </div>
+              Water Reservoir
+            </div>
+            <button class="btn btn-ghost btn-sm" onclick="simulateWater()">
+              + Refill
+            </button>
+          </div>
+          <div class="water-wave water-wave-sm">
+            <div class="wave-fill" id="water-fill"></div>
+            <div class="wave-label" id="water-label">65%</div>
+          </div>
+          <div class="reservoir-stats">
+            <div class="res-stat">
+              <div class="res-val-blue">1.2L</div>
+              <div class="res-label">Remaining</div>
+            </div>
+            <div class="res-stat">
+              <div class="res-val-blue">2.0L</div>
+              <div class="res-label">Capacity</div>
+            </div>
+            <div class="res-stat">
+              <div class="res-val-amber">18h</div>
+              <div class="res-label">Est. Left</div>
+            </div>
+          </div>
+          <div class="divider"></div>
+          <div class="temp-display temp-box">
+            <div class="temp-val" id="room-temp">
+              22<span class="temp-unit">°C</span>
+            </div>
+            <div class="temp-label">Room Temperature</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- CHARTS -->
+      <p class="section-title">Analytics</p>
+      <div class="grid-2">
+        <div class="card">
+          <div class="card-header">
+            <div class="card-title">
+              <div class="icon icon-purple">📊</div>
+              Feeding History (7 Days)
+            </div>
+          </div>
+          <div class="chart-wrap">
+            <canvas id="feedingChart"></canvas>
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-header">
+            <div class="card-title">
+              <div class="icon icon-green">📈</div>
+              Food Level Trend
+            </div>
+          </div>
+          <div class="chart-wrap">
+            <canvas id="levelChart"></canvas>
+          </div>
+        </div>
+      </div>
+
+      <!-- DOUGHNUT + ACTIVITY LOG -->
+      <div class="grid-2 meal-dist-wrapper">
+        <div class="card">
+          <div class="card-header">
+            <div class="card-title">
+              <div class="icon icon-pink">🥧</div>
+              Meal Distribution
+            </div>
+          </div>
+          <div class="meal-dist">
+            <div class="meal-dist-chart">
+              <canvas id="mealChart"></canvas>
+            </div>
+            <div class="meal-dist-legend">
+              <div class="meal-legend-item">
+                <span class="meal-dot meal-dot-morning"></span>
+                Morning (7:00 AM) — <strong>80g</strong>
+              </div>
+              <div class="meal-legend-item">
+                <span class="meal-dot meal-dot-afternoon"></span>
+                Afternoon (12:30 PM) — <strong>80g</strong>
+              </div>
+              <div class="meal-legend-item">
+                <span class="meal-dot meal-dot-evening"></span>
+                Evening (6:00 PM) — <strong>80g</strong>
+              </div>
+              <div class="meal-legend-item">
+                <span class="meal-dot meal-dot-manual"></span>
+                Manual Dispense — <strong>variable</strong>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-header">
+            <div class="card-title">
+              <div class="icon icon-purple">📋</div>
+              Activity Log
+            </div>
+            <button class="btn btn-ghost btn-sm" onclick="clearLog()">
+              Clear
+            </button>
+          </div>
+          <div class="log-list" id="log-list">
+            <div class="log-item log-ok">
+              <span class="log-time">12:30 PM</span>
+              <span class="log-msg">🥣 Scheduled feeding — 80g dispensed</span>
+            </div>
+            <div class="log-item log-ok">
+              <span class="log-time">07:00 AM</span>
+              <span class="log-msg">🥣 Morning meal — 80g dispensed</span>
+            </div>
+            <div class="log-item log-warn">
+              <span class="log-time">06:45 AM</span>
+              <span class="log-msg"
+                >⚠️ Food level dropped below 30% — refill recommended</span
+              >
+            </div>
+            <div class="log-item log-ok">
+              <span class="log-time">Yesterday</span>
+              <span class="log-msg">🔋 Battery backup test — passed</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- MANUAL CONTROL + SCHEDULE -->
+      <p class="section-title">Controls & Schedule</p>
+      <div class="grid-2">
+        <div class="card">
+          <div class="card-header">
+            <div class="card-title">
+              <div class="icon icon-green">🕹️</div>
+              Manual Control
+            </div>
+          </div>
+          <div class="controls-col">
+            <button
+              class="btn btn-primary btn-full"
+              id="feed-btn"
+              onclick="feedPet()"
+            >
+              🥣 Dispense Food Now
+            </button>
+            <div class="controls-grid">
+              <button class="btn btn-ghost" onclick="dispenseHalf()">
+                ½ Portion (40g)
+              </button>
+              <button class="btn btn-ghost" onclick="dispenseDouble()">
+                2× Portion (160g)
+              </button>
+            </div>
+            <div class="divider"></div>
+            <div class="controls-row">
+              <span>Auto-refill water when below 20%</span>
+              <label class="toggle-switch">
+                <input type="checkbox" checked id="auto-water" />
+                <span class="toggle-thumb"></span>
+              </label>
+            </div>
+            <div class="controls-row">
+              <span>Low-food notifications</span>
+              <label class="toggle-switch">
+                <input type="checkbox" checked id="notif-food" />
+                <span class="toggle-thumb"></span>
+              </label>
+            </div>
+            <div class="controls-row">
+              <span>Night-mode (quiet hours)</span>
+              <label class="toggle-switch">
+                <input type="checkbox" id="night-mode" />
+                <span class="toggle-thumb"></span>
+              </label>
+            </div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-header">
+            <div class="card-title">
+              <div class="icon icon-amber">🗓️</div>
+              Feeding Schedule
+            </div>
+            <button class="btn btn-ghost btn-sm" onclick="addSchedulePrompt()">
+              + Add
+            </button>
+          </div>
+          <div class="schedule-list" id="schedule-list">
+            <div class="schedule-item">
+              <div>
+                <div class="schedule-time">07:00 AM</div>
+                <div class="schedule-info">Morning • 80g • Every day</div>
+              </div>
+              <label class="toggle-switch"
+                ><input type="checkbox" checked /><span
+                  class="toggle-thumb"
+                ></span
+              ></label>
+            </div>
+            <div class="schedule-item">
+              <div>
+                <div class="schedule-time">12:30 PM</div>
+                <div class="schedule-info">Afternoon • 80g • Every day</div>
+              </div>
+              <label class="toggle-switch"
+                ><input type="checkbox" checked /><span
+                  class="toggle-thumb"
+                ></span
+              ></label>
+            </div>
+            <div class="schedule-item">
+              <div>
+                <div class="schedule-time">06:00 PM</div>
+                <div class="schedule-info">Evening • 80g • Every day</div>
+              </div>
+              <label class="toggle-switch"
+                ><input type="checkbox" checked /><span
+                  class="toggle-thumb"
+                ></span
+              ></label>
+            </div>
+            <div class="schedule-item sched-faded">
+              <div>
+                <div class="schedule-time">10:00 PM</div>
+                <div class="schedule-info">Late snack • 40g • Weekends</div>
+              </div>
+              <label class="toggle-switch"
+                ><input type="checkbox" /><span class="toggle-thumb"></span
+              ></label>
+            </div>
+          </div>
+        </div>
+      </div>
+    </main>
+
+    <!-- ─────────────────────── SCRIPTS ─────────────────────────── -->
+    <script src="app.js"></script>
+  </body>
+</html>
